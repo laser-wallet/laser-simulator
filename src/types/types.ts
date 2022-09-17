@@ -18,3 +18,14 @@ export type TxOpts = {
 export type SimulationResults = {
     gasUsed: number;
 };
+
+export type Log = {
+    transactionIndex: number;
+    blockNumber: number;
+    transactionHash: string;
+    address: Address;
+    topics: string[];
+    data: string;
+    logIndex: number;
+    blockHash: string;
+};
