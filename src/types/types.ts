@@ -35,7 +35,7 @@ type Erc20Transfers = {
 };
 
 type Erc721ransfers = {
-    erc721Transfer: { token: Address; tokenId: number; amountSent: number; amountReceived: number };
+    erc721Transfer: { token: Address; tokenId: string; amountSent: number; amountReceived: number };
 };
 
 type EthTransfers = {

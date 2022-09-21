@@ -13,9 +13,6 @@ const targetEvents = {
     withdrawl: "0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65",
 };
 
-const ERC165_ABI = ["function supportsInterface(bytes4) external view returns (bool)"];
-const MAGIC_VALUE = "0x80ac58cd";
-
 export type InterpreterResults = { [key: number]: Transfers };
 
 export class Interpreter {
@@ -49,40 +46,51 @@ export class Interpreter {
     }
 
     private _interpretTransfer(log: Log, user: Address): void {
-        let isErc20 = true;
+        const isErc20 = log.topics.length === 3 ? true : false;
         const tokenAddress = log.address;
-        const tokenContract = new ethers.Contract(tokenAddress, ERC165_ABI, this._provider);
 
-        tokenContract
-            .supportsInterface(MAGIC_VALUE)
-            .then((res: any) => {
-                if (res === true) {
-                    isErc20 = false;
-                }
-            })
-            .catch((error: any) => {});
+        const from = "0x" + log.topics[1].slice(26);
+        const to = "0x" + log.topics[2].slice(26);
 
         if (isErc20) {
             let amountSent: BigNumberish = 0;
             let amountReceived: BigNumberish = 0;
 
-            // The arguments are extended to 32 bytes.
-            const _from = "0x" + log.topics[1].slice(26);
-            const to = "0x" + log.topics[2].slice(26);
-
             // The amount transfered is passed in the 'data' key in hex format.
             const amount = BigNumber.from(log.data).toString();
 
-            if (_from.toLowerCase() === user.toLowerCase()) {
+            if (from.toLowerCase() === user.toLowerCase()) {
                 amountSent = amount;
             }
-
             if (to.toLowerCase() === user.toLowerCase()) {
                 amountReceived = amount;
             }
 
             this._results[this._pc] = {
                 erc20Transfer: { token: tokenAddress, amountSent: amountSent, amountReceived: amountReceived },
+            };
+            this._pc++;
+        } else {
+            let amountSent = 0;
+            let amountReceived = 0;
+
+            // The token id is in the last pos of the topcis array. Encoded in hex format.
+            const tokenId = BigNumber.from(log.topics[3]).toString();
+
+            if (from.toLowerCase() === user.toLowerCase()) {
+                amountSent = 1;
+            }
+            if (to.toLowerCase() === user.toLowerCase()) {
+                amountReceived = 1;
+            }
+
+            this._results[this._pc] = {
+                erc721Transfer: {
+                    token: tokenAddress,
+                    tokenId: tokenId,
+                    amountSent: amountSent,
+                    amountReceived: amountReceived,
+                },
             };
             this._pc++;
         }

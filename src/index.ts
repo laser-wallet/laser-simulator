@@ -38,7 +38,6 @@ export default class Simulator {
         ]);
 
         const receipt = await ethersProvider.getTransactionReceipt(transaction);
-
         const interpreter = new Interpreter(ethersProvider);
         const res = await interpreter.interpretResults(receipt, initialBalance);
         return res;
