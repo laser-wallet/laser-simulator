@@ -1,4 +1,4 @@
-import { BigNumberish } from "ethers";
+import { BigNumberish, BigNumber } from "ethers";
 
 export type Address = string;
 
@@ -29,3 +29,19 @@ export type Log = {
     logIndex: number;
     blockHash: string;
 };
+
+type Erc20Transfers = {
+    erc20Transfer: { token: Address; amountSent: BigNumberish; amountReceived: BigNumberish };
+};
+
+type Erc721ransfers = {
+    erc721Transfer: { token: Address; tokenId: number; amountSent: number; amountReceived: number };
+};
+
+type EthTransfers = {
+    ethTransfer: {
+        diff: BigNumberish;
+    };
+};
+
+export type Transfers = Erc20Transfers | Erc721ransfers | EthTransfers;
