@@ -14,14 +14,14 @@ const simulator = new Simulator();
 
 // Withdraw eth (weth for eth) example:
 const tx: TxOpts = {
-    from: "0x7681c78fb672024c8acce686cc9a7acf7f07640d",
-    to: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    value: 0,
-    data: "0x2e1a7d4d000000000000000000000000000000000000000000000000002386f26fc10000",
-    gasLimit: 300000,
-};
-
-const results = await simulator.simulateTransaction(tx);
+        networkId: "1", // mainnet
+        from: "0x080e7ef3B09938baaC4DF1aD924C9230cBf15cCE",
+        to: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        data: "0x2e1a7d4d000000000000000000000000000000000000000000000000006a94d74f430000",
+        gasLimit: 500000,
+        value: 0,
+    };
+const result = await simulator.simulateTransaction(tx);
 ```
 
 result: 
@@ -29,12 +29,13 @@ result:
 {
   '0': {
     erc20Transfer: {
-      token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      amountSent: '10000000000000000',
-      amountReceived: 0
+      token: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+      amountSent: '30000000000000000',
+      amountReceived: 0,
+      decimals: 18
     }
   },
-  '1': { ethTransfer: { diff: '9704890769327768' } }
+  '1': { ethTransfer: { diff: '30000000000000000' } }
 }
 ```
 
@@ -44,11 +45,12 @@ result:
 const simulator = new Simulator();
 
 const tx: TxOpts = {
+   networkId: "1", // mainnet
     from: "0x080e7ef3b09938baac4df1ad924c9230cbf15cce",
     to: "0x00000000006c3852cbEf3e08E8dF289169EdE581",
-    value: ethers.utils.parseEther("2.88"),
     data: "0xfb0f3ee1000......",
     gasLimit: 300000,
+    value: ethers.utils.parseEther("2.88"),
 };
 const result = await simulator.simulateTransaction(tx);
 ```
@@ -64,6 +66,6 @@ result:
       amountReceived: 1
     }
   },
-  '1': { ethTransfer: { diff: '-2882008246763049735' } }
+  '1': { ethTransfer: { diff: '-288000...' } }
 }
 ```

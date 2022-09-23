@@ -1,55 +1,47 @@
-import ganache, { Provider } from "ganache";
-import Web3 from "web3";
+import axios from "axios";
 import { BigNumberish, ethers, utils, BigNumber } from "ethers";
-import { Address, SimulationOpts, TxOpts, SimulationResults } from "./types";
-import { DEFAULT_OPTS } from "./config";
-import { getChain } from "./utils";
+import { Address, TxOpts } from "./types";
 import { Interpreter, InterpreterResults } from "./interpreter";
 
+const ACCESS_TOKEN = "";
+const TENDERLY_PROJECT = ""; // project slug
+const TENDERLY_USER = ""; // your username
+
 export default class Simulator {
-    url: string;
-    opts: SimulationOpts;
+    private _simulateUrl;
+    private _opts = {
+        headers: {
+            "X-Access-Key": ACCESS_TOKEN,
+        },
+    };
 
-    constructor(opts?: SimulationOpts, url?: string) {
-        this.opts = opts ?? DEFAULT_OPTS;
-        this.url = url ?? `https://${getChain(this.opts.chainId)}.infura.io/v3/faf17ca58524494b98040c2047b5465a`; // Testing url.
+    constructor() {
+        this._simulateUrl = `https://api.tenderly.co/api/v1/account/${TENDERLY_USER}/project/${TENDERLY_PROJECT}/simulate`;
     }
 
-    async simulateTransaction(tx: TxOpts): Promise<InterpreterResults> {
-        // @todo: Put the actual call in a try / catch block.
-        // Give a recursive try ( 2 times) in case the first one fails.
-        // Sometimes it randomly fails the first time.
+    async simulateTransaction(txOpts: TxOpts): Promise<InterpreterResults> {
+        const body = {
+            // standard TX fields
+            network_id: txOpts.networkId,
+            from: txOpts.from,
+            to: txOpts.to,
+            input: txOpts.data,
+            gas: txOpts.gasLimit,
+            gas_price: "0",
+            value: txOpts.value.toString(),
+            // simulation config (tenderly specific)
+            save_if_fails: true,
+            save: false,
+            simulation_type: "quick",
+        };
 
-        const from = utils.getAddress(tx.from);
-        const ganacheProvider = this._getGanacheProvider(from);
-        // @ts-ignore
-        const ethersProvider = new ethers.providers.Web3Provider(ganacheProvider);
-
-        const initialBalance = await ethersProvider.getBalance(from);
-        // @ts-ignore
-        const transaction = await ganacheProvider.send("eth_sendTransaction", [
-            {
-                from: from,
-                to: utils.getAddress(tx.to),
-                value: BigNumber.from(tx.value).toHexString(),
-                data: tx.data,
-                gasLimit: tx.gasLimit,
-            },
-        ]);
-
-        const receipt = await ethersProvider.getTransactionReceipt(transaction);
-        const interpreter = new Interpreter(ethersProvider);
-        const res = await interpreter.interpretResults(receipt, initialBalance);
-        return res;
-    }
-
-    private _getGanacheProvider(from: Address): Provider {
-        return ganache.provider({
-            // @ts-ignore
-            fork: this.url,
-            chainId: this.opts.chainId,
-            unlocked_accounts: [from],
-            preLatestConfirmations: this.opts.preLatestConfirmations,
-        });
+        const interpreter = new Interpreter();
+        try {
+            const resp = await axios.post(this._simulateUrl, body, this._opts);
+            const results = interpreter.interpretResults(resp.data.transaction.transaction_info, txOpts.from);
+            return results;
+        } catch (e) {
+            throw new Error(`Error simulating: ${e}`);
+        }
     }
 }

@@ -2,36 +2,23 @@ import { BigNumberish, BigNumber } from "ethers";
 
 export type Address = string;
 
-export type SimulationOpts = {
-    chainId: number;
-    preLatestConfirmations: number;
-};
-
 export type TxOpts = {
+    networkId: string;
     from: Address;
     to: Address;
-    value: BigNumberish;
     data: string;
     gasLimit: number;
+    value: BigNumberish;
 };
 
-export type SimulationResults = {
-    gasUsed: number;
-};
-
-export type Log = {
-    transactionIndex: number;
-    blockNumber: number;
-    transactionHash: string;
+export type RawLog = {
     address: Address;
     topics: string[];
     data: string;
-    logIndex: number;
-    blockHash: string;
 };
 
 type Erc20Transfers = {
-    erc20Transfer: { token: Address; amountSent: BigNumberish; amountReceived: BigNumberish };
+    erc20Transfer: { token: Address; amountSent: BigNumberish; amountReceived: BigNumberish; decimals: number };
 };
 
 type Erc721ransfers = {

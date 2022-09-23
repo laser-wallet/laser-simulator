@@ -1,6 +1,7 @@
 import { ethers, BigNumberish, BigNumber } from "ethers";
-import { Log, Transfers, Address } from "./types";
+import { RawLog, Transfers, Address } from "./types";
 import { Provider } from "@ethersproject/providers";
+import { ERC20_ABI } from "./abi";
 
 /**
  * key - name of the event.
@@ -19,33 +20,32 @@ export class Interpreter {
     private _results: InterpreterResults = {};
     private _pc: number = 0;
 
-    constructor(private _provider: Provider) {}
+    constructor() {}
 
-    public async interpretResults(
-        receipt: ethers.providers.TransactionReceipt,
-        userInitialBalance: BigNumber
-    ): Promise<InterpreterResults> {
-        if ("logs" in receipt) {
-            receipt.logs.map((log: Log) => {
-                const eventHash = log.topics[0];
+    public interpretResults(transactionInfo: any, from: Address): InterpreterResults {
+        console.log(transactionInfo);
+        const logs = transactionInfo?.logs;
+        if (logs) {
+            logs.map((log: any) => {
+                const rawLog: RawLog = log.raw;
+                const eventHash = rawLog.topics[0];
                 if (eventHash === targetEvents.transfer) {
-                    this._interpretTransfer(log, receipt.from);
+                    this._interpretTransfer(rawLog, from);
                 }
                 if (eventHash === targetEvents.deposit) {
-                    this._interpretDeposit(log, receipt.from);
+                    this._interpretDeposit(rawLog, from);
                 }
                 if (eventHash === targetEvents.withdrawl) {
-                    this._interpretWithdrawl(log, receipt.from);
+                    this._interpretWithdrawl(rawLog, from);
                 }
             });
         }
-
-        await this._updateEth(receipt.from, userInitialBalance);
+        this._updateEth(transactionInfo.balance_diff, from);
 
         return this._results;
     }
 
-    private _interpretTransfer(log: Log, user: Address): void {
+    private async _interpretTransfer(log: RawLog, user: Address): Promise<void> {
         const isErc20 = log.topics.length === 3 ? true : false;
         const tokenAddress = log.address;
 
@@ -55,6 +55,8 @@ export class Interpreter {
         if (isErc20) {
             let amountSent: BigNumberish = 0;
             let amountReceived: BigNumberish = 0;
+
+            const decimals = 18;
 
             // The amount transfered is passed in the 'data' key in hex format.
             const amount = BigNumber.from(log.data).toString();
@@ -67,7 +69,12 @@ export class Interpreter {
             }
 
             this._results[this._pc] = {
-                erc20Transfer: { token: tokenAddress, amountSent: amountSent, amountReceived: amountReceived },
+                erc20Transfer: {
+                    token: tokenAddress,
+                    amountSent: amountSent,
+                    amountReceived: amountReceived,
+                    decimals: decimals,
+                },
             };
             this._pc++;
         } else {
@@ -96,7 +103,7 @@ export class Interpreter {
         }
     }
 
-    private _interpretDeposit(log: Log, user: Address): void {
+    private _interpretDeposit(log: RawLog, user: Address): void {
         const tokenAddress = log.address;
         let amountReceived: BigNumberish = 0;
 
@@ -108,12 +115,12 @@ export class Interpreter {
         }
 
         this._results[this._pc] = {
-            erc20Transfer: { token: tokenAddress, amountSent: 0, amountReceived: amountReceived },
+            erc20Transfer: { token: tokenAddress, amountSent: 0, amountReceived: amountReceived, decimals: 18 },
         };
         this._pc++;
     }
 
-    private _interpretWithdrawl(log: Log, user: Address): void {
+    private _interpretWithdrawl(log: RawLog, user: Address): void {
         const tokenAddress = log.address;
         let amountSent: BigNumberish = 0;
 
@@ -125,21 +132,33 @@ export class Interpreter {
         }
 
         this._results[this._pc] = {
-            erc20Transfer: { token: tokenAddress, amountSent: amountSent, amountReceived: 0 },
+            erc20Transfer: { token: tokenAddress, amountSent: amountSent, amountReceived: 0, decimals: 18 },
         };
         this._pc++;
     }
 
-    private async _updateEth(user: Address, initialBalance: BigNumber): Promise<void> {
-        // @todo Discount gas.
-        // --> add gas in a separate field so it is not mixed with normal eth in / out.
-        const postBalance = await this._provider.getBalance(user);
-
-        this._results[this._pc] = {
-            ethTransfer: {
-                diff: postBalance.sub(initialBalance).toString(),
-            },
-        };
-        this._pc++;
+    private _updateEth(balanceDiff: any[], from: Address): void {
+        for (let balanceChange of balanceDiff) {
+            if (balanceChange.address.toLowerCase() === from.toLowerCase()) {
+                const ethChange = BigNumber.from(balanceChange.dirty).sub(balanceChange.original);
+                this._results[this._pc] = {
+                    ethTransfer: {
+                        diff: ethChange.toString(),
+                    },
+                };
+                this._pc++;
+            }
+        }
     }
+
+    // private async _getTokenDecimals(tokenAddress: Address): Promise<number> {
+    //     const token = new ethers.Contract(tokenAddress, ERC20_ABI, this._provider);
+
+    //     try {
+    //         const decimals = await token.decimals();
+    //         return Number(decimals);
+    //     } catch (e) {
+    //         throw new Error(`Error getting token's decimals, probably incorrect address: ${e}`);
+    //     }
+    // }
 }
