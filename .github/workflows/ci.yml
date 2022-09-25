@@ -1,5 +1,5 @@
 
-name: CLI
+name: CI
 
 on:
   push:
@@ -22,16 +22,7 @@ jobs:
         run: npm i 
       
       - name: Run tests
-        run: npm run test
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-
-    steps: 
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '16.2.0'
+        run: npm run tests
         
-        - name: Lints code
-          run:  npm run lint
+      - name: Lint
+        run: npm run lint
