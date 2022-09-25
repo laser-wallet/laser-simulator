@@ -23,7 +23,6 @@ export class Interpreter {
     constructor() {}
 
     public interpretResults(transactionInfo: any, from: Address): InterpreterResults {
-        console.log(transactionInfo);
         const logs = transactionInfo?.logs;
         if (logs) {
             logs.map((log: any) => {
@@ -43,6 +42,52 @@ export class Interpreter {
         this._updateEth(transactionInfo.balance_diff, from);
 
         return this._results;
+    }
+
+    public sanitizeResults(object: InterpreterResults): InterpreterResults {
+        const keys = Object.keys(object);
+        const newObject: InterpreterResults = {};
+
+        for (let i = 0; i < keys.length; i++) {
+            // @ts-ignore
+            const tokenInfo = object[keys[i]].erc20Transfer;
+            if (Object.keys(newObject).length === 0) {
+                newObject[i] = { erc20Transfer: tokenInfo };
+            } else {
+                for (const [key, value] of Object.entries(newObject)) {
+                    const _tokenInfo: any = value;
+                    if (tokenInfo.token.toLowerCase() === _tokenInfo.erc20Transfer.token.toLowerCase()) {
+                        const amountSent = BigNumber.from(tokenInfo.amountSent).add(
+                            BigNumber.from(_tokenInfo.erc20Transfer.amountSent)
+                        );
+                        const amountReceived = BigNumber.from(tokenInfo.amountReceived).add(
+                            BigNumber.from(_tokenInfo.erc20Transfer.amountReceived)
+                        );
+                        newObject[Number(key)] = {
+                            erc20Transfer: {
+                                token: tokenInfo.token,
+                                amountSent: amountSent,
+                                amountReceived: amountReceived,
+                                decimals: tokenInfo.decimals,
+                            },
+                        };
+                    }
+                }
+            }
+
+            let exists = false;
+            Object.values(newObject).map((val) => {
+                // @ts-ignore
+                if (tokenInfo.token.toLowerCase() === val.erc20Transfer.token.toLowerCase()) {
+                    exists = true;
+                }
+            });
+
+            if (!exists) {
+                newObject[Object.keys(newObject).length] = { erc20Transfer: tokenInfo };
+            }
+        }
+        return newObject;
     }
 
     private async _interpretTransfer(log: RawLog, user: Address): Promise<void> {
