@@ -7,7 +7,7 @@
 ## Laser-Simulator 
 
 
-### Usage
+### Usage
 
 ```js
 const simulator = new Simulator();
