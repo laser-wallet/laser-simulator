@@ -1,6 +1,7 @@
 import { BigNumber, ethers } from "ethers";
 import { expect } from "chai";
 import { Interpreter } from "../src/interpreter";
+import { sanitizeResults } from "../src/utils/sanitizers";
 
 describe("Sanitizer (ERC-20)", () => {
     let interpreter: Interpreter;
@@ -11,9 +12,6 @@ describe("Sanitizer (ERC-20)", () => {
         amountReceived: "0",
         decimals: 18,
     };
-    beforeEach(() => {
-        interpreter = new Interpreter();
-    });
 
     it("should sanitize the object correctly (same address)", () => {
         const mockObject = {
@@ -39,12 +37,11 @@ describe("Sanitizer (ERC-20)", () => {
         const token2 = mockObject[1].erc20Transfer.token;
         expect(token1.toLowerCase()).to.equal(token2.toLowerCase());
 
-        const sanitizedObject = interpreter.sanitizeResults(mockObject);
+        const sanitizedObject = sanitizeResults(mockObject);
 
         expect(Object.keys(sanitizedObject).length).to.equal(1);
         // @ts-ignore
         expect(sanitizedObject[0].erc20Transfer.token).to.equal(token1);
-
         const amountSent1 = mockObject[0].erc20Transfer.amountSent;
         const amountSent2 = mockObject[1].erc20Transfer.amountSent;
         const totalAmountSent = BigNumber.from(amountSent1).add(amountSent2);
@@ -74,7 +71,7 @@ describe("Sanitizer (ERC-20)", () => {
             },
         };
 
-        const sanitizedObject = interpreter.sanitizeResults(mockObject);
+        const sanitizedObject = sanitizeResults(mockObject);
 
         // Shouldn't change.
         expect(JSON.stringify(sanitizedObject)).to.equal(JSON.stringify(mockObject));
@@ -108,7 +105,7 @@ describe("Sanitizer (ERC-20)", () => {
             },
         };
 
-        const sanitizedObject = interpreter.sanitizeResults(mockObject);
+        const sanitizedObject = sanitizeResults(mockObject);
         expect(Object.keys(sanitizedObject).length).to.equal(2);
 
         const token2 = mockObject[1].erc20Transfer;

@@ -9,6 +9,7 @@
         "strict": true,
         "declaration": true,
         "resolveJsonModule": true,
+        "suppressImplicitAnyIndexErrors": true,
         "skipLibCheck": true
     },
     "include": ["src/**/*"]

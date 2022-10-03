@@ -2,6 +2,7 @@ import { ethers, BigNumberish, BigNumber } from "ethers";
 import { RawLog, Transfers, Address } from "./types";
 import { Provider } from "@ethersproject/providers";
 import { ERC20_ABI } from "./abi";
+import { sanitizeResults } from "./utils/sanitizers";
 
 /**
  * key - name of the event.
@@ -41,53 +42,7 @@ export class Interpreter {
         }
         this._updateEth(transactionInfo.balance_diff, from);
 
-        return this._results;
-    }
-
-    public sanitizeResults(object: InterpreterResults): InterpreterResults {
-        const keys = Object.keys(object);
-        const newObject: InterpreterResults = {};
-
-        for (let i = 0; i < keys.length; i++) {
-            // @ts-ignore
-            const tokenInfo = object[keys[i]].erc20Transfer;
-            if (Object.keys(newObject).length === 0) {
-                newObject[i] = { erc20Transfer: tokenInfo };
-            } else {
-                for (const [key, value] of Object.entries(newObject)) {
-                    const _tokenInfo: any = value;
-                    if (tokenInfo.token.toLowerCase() === _tokenInfo.erc20Transfer.token.toLowerCase()) {
-                        const amountSent = BigNumber.from(tokenInfo.amountSent).add(
-                            BigNumber.from(_tokenInfo.erc20Transfer.amountSent)
-                        );
-                        const amountReceived = BigNumber.from(tokenInfo.amountReceived).add(
-                            BigNumber.from(_tokenInfo.erc20Transfer.amountReceived)
-                        );
-                        newObject[Number(key)] = {
-                            erc20Transfer: {
-                                token: tokenInfo.token,
-                                amountSent: amountSent,
-                                amountReceived: amountReceived,
-                                decimals: tokenInfo.decimals,
-                            },
-                        };
-                    }
-                }
-            }
-
-            let exists = false;
-            Object.values(newObject).map((val) => {
-                // @ts-ignore
-                if (tokenInfo.token.toLowerCase() === val.erc20Transfer.token.toLowerCase()) {
-                    exists = true;
-                }
-            });
-
-            if (!exists) {
-                newObject[Object.keys(newObject).length] = { erc20Transfer: tokenInfo };
-            }
-        }
-        return newObject;
+        return sanitizeResults(this._results);
     }
 
     private async _interpretTransfer(log: RawLog, user: Address): Promise<void> {
@@ -113,7 +68,7 @@ export class Interpreter {
                 amountReceived = amount;
             }
 
-            this._results[this._pc] = {
+            this._results[this._pc++] = {
                 erc20Transfer: {
                     token: tokenAddress,
                     amountSent: amountSent,
@@ -121,7 +76,6 @@ export class Interpreter {
                     decimals: decimals,
                 },
             };
-            this._pc++;
         } else {
             let amountSent = 0;
             let amountReceived = 0;
@@ -136,7 +90,7 @@ export class Interpreter {
                 amountReceived = 1;
             }
 
-            this._results[this._pc] = {
+            this._results[this._pc++] = {
                 erc721Transfer: {
                     token: tokenAddress,
                     tokenId: tokenId,
@@ -144,7 +98,6 @@ export class Interpreter {
                     amountReceived: amountReceived,
                 },
             };
-            this._pc++;
         }
     }
 
@@ -159,10 +112,9 @@ export class Interpreter {
             amountReceived = amount;
         }
 
-        this._results[this._pc] = {
+        this._results[this._pc++] = {
             erc20Transfer: { token: tokenAddress, amountSent: 0, amountReceived: amountReceived, decimals: 18 },
         };
-        this._pc++;
     }
 
     private _interpretWithdrawl(log: RawLog, user: Address): void {
@@ -176,10 +128,9 @@ export class Interpreter {
             amountSent = amount;
         }
 
-        this._results[this._pc] = {
+        this._results[this._pc++] = {
             erc20Transfer: { token: tokenAddress, amountSent: amountSent, amountReceived: 0, decimals: 18 },
         };
-        this._pc++;
     }
 
     private _updateEth(balanceDiff: any[], from: Address): void {
